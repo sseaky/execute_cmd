@@ -3,6 +3,11 @@
 # @Author: Seaky
 # @Date:   2019/9/24 10:49
 
+'''
+execute_sql_remote(sql, db_host='localhost', db_port=3306, db_user, db_pass, db_name,
+    ssh_host, ssh_port=22, ssh_user, ssh_key)
+'''
+
 import re
 from subprocess import run, PIPE, STDOUT
 
@@ -87,7 +92,7 @@ def excute_sql(**kwargs):
 
 def execute_sql_remote(**kwargs):
     '''
-    通过ssh查询远程数据库，提供make_cmd_sql，make_cmd_ssh的参数
+    通过ssh查询远程数据库，提供make_cmd_sql，make_cmd_ssh的参数, sql语句中使用"
     :param kwargs:
     :return:
     '''
