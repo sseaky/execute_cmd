@@ -65,7 +65,8 @@ def make_ssh_cmd(cmd, ssh_host, ssh_port=22, ssh_user=None, ssh_keyfile=None, en
     if ssh_user:
         cmd1 += "-l {} ".format(ssh_user)
     if ssh_keyfile:
-        cmd1 += "-i '{}' ".format(ssh_keyfile)
+        # -i 加引号在win10下会找不到keyfile
+        cmd1 += "-i {} ".format(ssh_keyfile)
     if isinstance(ssh_options, dict):
         for k, v in ssh_options.items():
             cmd1 += '-o {}={} '.format(k, v)
