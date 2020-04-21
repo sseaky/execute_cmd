@@ -40,27 +40,35 @@ def execute(cmd, stdout=PIPE, stderr=STDOUT, encoding='utf-8', shell=False, *arg
     return p
 
 
-def make_ssh_cmd(cmd, ssh_host, ssh_port=22, ssh_user=None, ssh_keyfile=None, env=None, escape='`"', **kwargs):
+def make_ssh_cmd(cmd, ssh_host, ssh_port=22, ssh_user=None, ssh_keyfile=None, env=None, escape='`"', ssh_options=None,
+                 ssh_quite=False, **kwargs):
     '''
     :param ssh_host:
     :param cmd:
     :param ssh_port:
     :param ssh_user:
     :param ssh_keyfile:
-    :param ssh_pkey:
     :param env:
     :param escape:  替换 ` "
+    :param ssh_options:  {'StrictHostKeyChecking': 'no', 'UserKnownHostsFile': '/dev/null'}
+    :param ssh_quite:  ssh -q, 对于执行sql，warning信息会干扰结果的自动解析
     :param kwargs:
     :return:
     '''
     if isinstance(escape, str):
         for es in list(escape):
             cmd = re.sub(r'(?<!\\){}'.format(es), '\\{}'.format(es), cmd)
-    cmd1 = "ssh -p {} ".format(ssh_port)
+    cmd1 = 'ssh '
+    if ssh_quite:
+        cmd1 += '-q '
+    cmd1 += "-p {} ".format(ssh_port)
     if ssh_user:
         cmd1 += "-l {} ".format(ssh_user)
     if ssh_keyfile:
         cmd1 += "-i '{}' ".format(ssh_keyfile)
+    if isinstance(ssh_options, dict):
+        for k, v in ssh_options.items():
+            cmd1 += '-o {}={} '.format(k, v)
     cmd1 += ssh_host
     if isinstance(env, dict):
         cmd = ''.join("export {}='{}' && ".format(k, v) for k, v in env.items()) + cmd
@@ -97,19 +105,22 @@ def execute_sql(**kwargs):
     return parse_execute_sql_result(p)
 
 
-def execute_ssh_cmd(cmd, **kwargs):
+def execute_ssh_cmd(cmd, ssh_temp_key_dir=None, **kwargs):
     '''
     执行远程ssh命令
+    :param ssh_temp_key_dir: 临时保存key的目录
     :param kwargs:
-        ssh_pkey, 可以传入key字串
+        ssh_pkey, 可以传入key字串，如www-data调用时受权限限制，需要临时保存key
     :return:
     '''
     temp_keyfile = False
     if kwargs.get('ssh_pkey'):
-        ssh_root = Path(os.environ['HOME']) / '.ssh'
-        if not ssh_root.exists():
-            ssh_root.mkdir()
-        ssh_keyfile = '{}/cmd_temp_key'.format(ssh_root)
+        if not ssh_temp_key_dir:
+            ssh_temp_key_dir = Path(os.environ['HOME']) / '.ssh'
+        ssh_temp_key_dir = Path(ssh_temp_key_dir)
+        if not ssh_temp_key_dir.exists():
+            ssh_temp_key_dir.mkdir()
+        ssh_keyfile = '{}/cmd_temp_key'.format(ssh_temp_key_dir)
         open(ssh_keyfile, 'w').write(kwargs['ssh_pkey'])
         execute('chmod 600 {}'.format(ssh_keyfile))
         kwargs['ssh_keyfile'] = ssh_keyfile
@@ -128,6 +139,7 @@ def execute_sql_remote(sql, **kwargs):
         sql
     :return:
     '''
+    kwargs['ssh_quite'] = True
     p = execute_ssh_cmd(cmd=make_cmd_sql(sql, **kwargs), **kwargs)
     return parse_execute_sql_result(p)
 
